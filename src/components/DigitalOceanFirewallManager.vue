@@ -821,8 +821,10 @@ interface Droplet {
 interface RuleNote {
   firewallId: string
   ruleType: 'inbound' | 'outbound'
-  ruleIndex: number
+  ruleHash: string
   note: string
+  // Legacy support for migration
+  ruleIndex?: number
 }
 
 const apiTokens = ref<ApiToken[]>([])
@@ -981,6 +983,37 @@ const switchToken = async (tokenId: string) => {
   }
 }
 
+// Helper function to generate a stable hash for a firewall rule
+const generateRuleHash = (rule: FirewallRule): string => {
+  // Create a normalized representation of the rule for hashing
+  const ruleForHash = {
+    protocol: rule.protocol,
+    ports: rule.ports || '',
+    sources: rule.sources ? {
+      addresses: rule.sources.addresses?.sort() || [],
+      tags: rule.sources.tags?.sort() || [],
+      droplet_ids: rule.sources.droplet_ids?.sort() || [],
+      load_balancer_uids: rule.sources.load_balancer_uids?.sort() || []
+    } : null,
+    destinations: rule.destinations ? {
+      addresses: rule.destinations.addresses?.sort() || [],
+      tags: rule.destinations.tags?.sort() || [],
+      droplet_ids: rule.destinations.droplet_ids?.sort() || [],
+      load_balancer_uids: rule.destinations.load_balancer_uids?.sort() || []
+    } : null
+  }
+  
+  // Simple hash function - convert to string and create hash
+  const str = JSON.stringify(ruleForHash)
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36)
+}
+
 // Notes management functions
 const loadNotes = () => {
   const stored = localStorage.getItem(NOTES_STORAGE_KEY)
@@ -999,24 +1032,57 @@ const saveNotes = () => {
 }
 
 const getRuleNote = (firewallId: string, ruleType: 'inbound' | 'outbound', ruleIndex: number): string => {
-  const note = ruleNotes.value.find(
-    n => n.firewallId === firewallId && n.ruleType === ruleType && n.ruleIndex === ruleIndex
+  // Get the current rule to generate its hash
+  const rules = ruleType === 'inbound' ? editingFirewall.value.inbound_rules : editingFirewall.value.outbound_rules
+  if (!rules || !rules[ruleIndex]) return ''
+  
+  const rule = rules[ruleIndex]
+  const ruleHash = generateRuleHash(rule)
+  
+  // First try to find by hash (new method)
+  let note = ruleNotes.value.find(
+    n => n.firewallId === firewallId && n.ruleType === ruleType && n.ruleHash === ruleHash
   )
+  
+  // Fallback to index-based lookup for migration (legacy support)
+  if (!note) {
+    note = ruleNotes.value.find(
+      n => n.firewallId === firewallId && n.ruleType === ruleType && n.ruleIndex === ruleIndex && !n.ruleHash
+    )
+    
+    // If we found a legacy note, migrate it to hash-based
+    if (note) {
+      note.ruleHash = ruleHash
+      delete note.ruleIndex
+      saveNotes()
+    }
+  }
+  
   return note?.note || ''
 }
 
 const saveRuleNote = (ruleType: 'inbound' | 'outbound', ruleIndex: number) => {
   if (!selectedFirewall.value?.id) return
   
+  // Get the current rule to generate its hash
+  const rules = ruleType === 'inbound' ? editingFirewall.value.inbound_rules : editingFirewall.value.outbound_rules
+  if (!rules || !rules[ruleIndex]) return
+  
+  const rule = rules[ruleIndex]
+  const ruleHash = generateRuleHash(rule)
+  
+  // Find existing note by hash (new method) or by index (legacy)
   const existingIndex = ruleNotes.value.findIndex(
-    n => n.firewallId === selectedFirewall.value!.id && n.ruleType === ruleType && n.ruleIndex === ruleIndex
+    n => n.firewallId === selectedFirewall.value!.id && 
+         n.ruleType === ruleType && 
+         (n.ruleHash === ruleHash || (!n.ruleHash && n.ruleIndex === ruleIndex))
   )
   
   if (tempNoteText.value.trim()) {
     const noteData: RuleNote = {
       firewallId: selectedFirewall.value.id,
       ruleType,
-      ruleIndex,
+      ruleHash,
       note: tempNoteText.value.trim()
     }
     
@@ -1455,10 +1521,23 @@ watch(selectedTokenId, () => {
   }
 })
 
+// Clean up orphaned legacy notes that couldn't be migrated
+const cleanupLegacyNotes = () => {
+  const legacyNotes = ruleNotes.value.filter(note => !note.ruleHash && note.ruleIndex !== undefined)
+  if (legacyNotes.length > 0) {
+    console.log(`Found ${legacyNotes.length} orphaned legacy notes, cleaning up...`)
+    ruleNotes.value = ruleNotes.value.filter(note => note.ruleHash || note.ruleIndex === undefined)
+    saveNotes()
+  }
+}
+
 // Load data on mount
 onMounted(async () => {
   loadTokens()
   loadNotes()
+  
+  // Clean up any orphaned legacy notes
+  cleanupLegacyNotes()
   
   // Try to migrate old single token if exists
   const oldToken = localStorage.getItem('do_firewall_manager_token')
