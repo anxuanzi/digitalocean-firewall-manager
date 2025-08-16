@@ -2,6 +2,12 @@
 
 A modern, efficient firewall management interface for DigitalOcean - built by IT professionals, for IT professionals.
 
+## 🌐 Try It Now - No Installation Required!
+
+**[🚀 Launch Hosted Version](https://dofwui.ftan.dev)**
+
+**100% Client-Side Application** - Your API tokens and firewall data never leave your browser. Nothing is sent to our servers, and we don't collect any usage metrics or analytics. This is a pure client-side application that runs entirely in your browser for maximum privacy and security.
+
 ![Vue.js](https://img.shields.io/badge/Vue.js-3.x-4FC08D?style=flat-square&logo=vue.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.x-06B6D4?style=flat-square&logo=tailwindcss)
@@ -64,6 +70,19 @@ droplet:12345678
 ### Rule Management
 
 Easily duplicate, modify, and organize your firewall rules with visual feedback.
+
+## 🔐 Privacy & Security First
+
+This application is designed with privacy as a core principle:
+
+- **🌐 100% Client-Side**: All code runs entirely in your browser - no backend servers involved
+- **🚫 Zero Data Collection**: We don't collect, store, or transmit any usage metrics, analytics, or personal data
+- **🔒 Local Storage Only**: Your API tokens and configuration data are stored exclusively in your browser's localStorage
+- **🛡️ No External Dependencies**: Direct communication with DigitalOcean's API only - no third-party services
+- **📊 No Tracking**: No cookies, no analytics, no user tracking of any kind
+- **🔍 Open Source**: Full transparency - you can inspect every line of code
+
+**Your data stays yours.** This tool respects your privacy and security requirements.
 
 ## 🛠️ Installation
 
@@ -194,12 +213,16 @@ lb:uuid-here
 
 ## 🔒 Security Considerations
 
-- **Token Storage**: API tokens are stored in browser localStorage (client-side only)
-- **Multiple Token Security**: Each token is stored separately with a unique identifier
-- **Clear on Shared Computers**: Use the "Disconnect" button and token management to remove stored tokens
-- **Token Permissions**: Use tokens with minimal required permissions
-- **Rule Notes Privacy**: Notes are stored locally and never sent to external servers
-- **Browser Storage**: All sensitive data remains in your browser's localStorage
+**Complete Privacy Guarantee**: This application operates with zero server-side components and collects no data whatsoever.
+
+- **🏠 Local-Only Storage**: API tokens are stored exclusively in browser localStorage (client-side only)
+- **🔐 Multiple Token Security**: Each token is stored separately with a unique identifier in your browser
+- **🧹 Shared Computer Safety**: Use the "Disconnect" button and token management to remove stored tokens
+- **⚠️ Token Permissions**: Use tokens with minimal required permissions (read/write for Firewalls only)
+- **📝 Private Notes**: Rule notes are stored locally and never transmitted to any external servers
+- **🛡️ Browser-Only Data**: All sensitive data remains exclusively in your browser's localStorage
+- **🚫 No Analytics**: Zero tracking, cookies, or data collection - your usage patterns remain private
+- **🌐 Direct API Communication**: Only communicates directly with DigitalOcean's official API endpoints
 
 ### Development Guidelines
 
