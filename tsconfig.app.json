@@ -5,6 +5,7 @@
 
     /* Linting */
     "strict": true,
+    "exactOptionalPropertyTypes": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
