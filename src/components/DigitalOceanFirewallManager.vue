@@ -202,7 +202,7 @@
 
         <!-- Firewall Editor -->
         <div class="lg:col-span-2">
-          <div v-if="selectedFirewall" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+          <div v-if="selectedFirewall || editingFirewall.name" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
             <div class="flex items-center justify-between mb-6">
               <div>
                 <input
