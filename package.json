@@ -1,6 +1,15 @@
 {
   "name": "digitalocean-firewall-ui",
-  "private": true,
+  "private": false,
+  "license": "MIT",
+  "repository": {
+    "url": "https://github.com/anxuanzi/digitalocean-firewall-manager"
+  },
+  "author": {
+    "name": "Tony An",
+    "email": "tony@oease.net",
+    "url": "https://ftan.dev"
+  },
   "version": "0.0.0",
   "type": "module",
   "scripts": {
