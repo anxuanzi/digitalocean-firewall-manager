@@ -305,12 +305,17 @@
                     <textarea
                       v-model="rule.sourcesText"
                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                      placeholder="Enter IPs, CIDR blocks, or tags (one per line)&#10;e.g.:&#10;192.168.1.0/24&#10;10.0.0.1&#10;tag:web-servers"
-                      rows="3"
+                      placeholder="Enter IPs, CIDR blocks, or tags (one per line)&#10;e.g.:&#10;192.168.1.0/24&#10;10.0.0.1&#10;tag:web-servers&#10;&#10;💡 TIP: Add ALL your IP lists here instead of creating multiple rules"
+                      rows="4"
                       @input="updateRuleSources(rule, $event)"
                     ></textarea>
-                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {{ countSources(rule) }} sources
+                    <div class="mt-1 flex justify-between items-center">
+                      <div class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ countSources(rule) }} sources
+                      </div>
+                      <div v-if="countSources(rule) > 10" class="text-xs text-orange-600 dark:text-orange-400">
+                        ⚠️ Large rule - consider splitting if needed
+                      </div>
                     </div>
                   </div>
 
@@ -345,9 +350,9 @@
                           </div>
                         </div>
                         <div v-else>
-                          <div v-if="selectedFirewall?.id && getRuleNote(selectedFirewall.id, 'inbound', index)" 
+                          <div v-if="getRuleNote(selectedFirewall?.id || `temp_${editingFirewall.name}`, 'inbound', index)" 
                                class="text-sm text-gray-700 dark:text-gray-300">
-                            {{ getRuleNote(selectedFirewall.id, 'inbound', index) }}
+                            {{ getRuleNote(selectedFirewall?.id || `temp_${editingFirewall.name}`, 'inbound', index) }}
                           </div>
                           <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">
                             No note added
@@ -356,7 +361,7 @@
                             class="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                             @click="startEditingNote('inbound', index)"
                           >
-                            {{ getRuleNote(selectedFirewall?.id || '', 'inbound', index) ? 'Edit note' : 'Add note' }}
+                            {{ getRuleNote(selectedFirewall?.id || `temp_${editingFirewall.name}`, 'inbound', index) ? 'Edit note' : 'Add note' }}
                           </button>
                         </div>
                       </div>
@@ -435,12 +440,17 @@
                     <textarea
                       v-model="rule.destinationsText"
                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                      placeholder="Enter IPs, CIDR blocks, or tags (one per line)&#10;e.g.:&#10;192.168.1.0/24&#10;10.0.0.1&#10;tag:web-servers"
-                      rows="3"
+                      placeholder="Enter IPs, CIDR blocks, or tags (one per line)&#10;e.g.:&#10;192.168.1.0/24&#10;10.0.0.1&#10;tag:web-servers&#10;&#10;💡 TIP: Add ALL your IP lists here instead of creating multiple rules"
+                      rows="4"
                       @input="updateRuleDestinations(rule, $event)"
                     ></textarea>
-                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {{ countDestinations(rule) }} destinations
+                    <div class="mt-1 flex justify-between items-center">
+                      <div class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ countDestinations(rule) }} destinations
+                      </div>
+                      <div v-if="countDestinations(rule) > 10" class="text-xs text-orange-600 dark:text-orange-400">
+                        ⚠️ Large rule - consider splitting if needed
+                      </div>
                     </div>
                   </div>
 
@@ -475,9 +485,9 @@
                           </div>
                         </div>
                         <div v-else>
-                          <div v-if="selectedFirewall?.id && getRuleNote(selectedFirewall.id, 'outbound', index)" 
+                          <div v-if="getRuleNote(selectedFirewall?.id || `temp_${editingFirewall.name}`, 'outbound', index)" 
                                class="text-sm text-gray-700 dark:text-gray-300">
-                            {{ getRuleNote(selectedFirewall.id, 'outbound', index) }}
+                            {{ getRuleNote(selectedFirewall?.id || `temp_${editingFirewall.name}`, 'outbound', index) }}
                           </div>
                           <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">
                             No note added
@@ -486,7 +496,7 @@
                             class="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                             @click="startEditingNote('outbound', index)"
                           >
-                            {{ getRuleNote(selectedFirewall?.id || '', 'outbound', index) ? 'Edit note' : 'Add note' }}
+                            {{ getRuleNote(selectedFirewall?.id || `temp_${editingFirewall.name}`, 'outbound', index) ? 'Edit note' : 'Add note' }}
                           </button>
                         </div>
                       </div>
@@ -1036,18 +1046,21 @@ const getRuleNote = (firewallId: string, ruleType: 'inbound' | 'outbound', ruleI
   const rules = ruleType === 'inbound' ? editingFirewall.value.inbound_rules : editingFirewall.value.outbound_rules
   if (!rules || !rules[ruleIndex]) return ''
   
+  // For newly created firewalls without ID, use a temporary ID based on the firewall name
+  const effectiveFirewallId = firewallId || `temp_${editingFirewall.value.name}`
+  
   const rule = rules[ruleIndex]
   const ruleHash = generateRuleHash(rule)
   
   // First try to find by hash (new method)
   let note = ruleNotes.value.find(
-    n => n.firewallId === firewallId && n.ruleType === ruleType && n.ruleHash === ruleHash
+    n => n.firewallId === effectiveFirewallId && n.ruleType === ruleType && n.ruleHash === ruleHash
   )
   
   // Fallback to index-based lookup for migration (legacy support)
   if (!note) {
     note = ruleNotes.value.find(
-      n => n.firewallId === firewallId && n.ruleType === ruleType && n.ruleIndex === ruleIndex && !n.ruleHash
+      n => n.firewallId === effectiveFirewallId && n.ruleType === ruleType && n.ruleIndex === ruleIndex && !n.ruleHash
     )
     
     // If we found a legacy note, migrate it to hash-based
@@ -1062,25 +1075,26 @@ const getRuleNote = (firewallId: string, ruleType: 'inbound' | 'outbound', ruleI
 }
 
 const saveRuleNote = (ruleType: 'inbound' | 'outbound', ruleIndex: number) => {
-  if (!selectedFirewall.value?.id) return
-  
   // Get the current rule to generate its hash
   const rules = ruleType === 'inbound' ? editingFirewall.value.inbound_rules : editingFirewall.value.outbound_rules
   if (!rules || !rules[ruleIndex]) return
+  
+  // For newly created firewalls without ID, use a temporary ID based on the firewall name
+  const effectiveFirewallId = selectedFirewall.value?.id || `temp_${editingFirewall.value.name}`
   
   const rule = rules[ruleIndex]
   const ruleHash = generateRuleHash(rule)
   
   // Find existing note by hash (new method) or by index (legacy)
   const existingIndex = ruleNotes.value.findIndex(
-    n => n.firewallId === selectedFirewall.value!.id && 
+    n => n.firewallId === effectiveFirewallId && 
          n.ruleType === ruleType && 
          (n.ruleHash === ruleHash || (!n.ruleHash && n.ruleIndex === ruleIndex))
   )
   
   if (tempNoteText.value.trim()) {
     const noteData: RuleNote = {
-      firewallId: selectedFirewall.value.id,
+      firewallId: effectiveFirewallId,
       ruleType,
       ruleHash,
       note: tempNoteText.value.trim()
@@ -1104,10 +1118,10 @@ const saveRuleNote = (ruleType: 'inbound' | 'outbound', ruleIndex: number) => {
 }
 
 const startEditingNote = (ruleType: 'inbound' | 'outbound', ruleIndex: number) => {
-  if (!selectedFirewall.value?.id) return
-  
   editingNote.value = { type: ruleType, index: ruleIndex }
-  tempNoteText.value = getRuleNote(selectedFirewall.value.id, ruleType, ruleIndex)
+  // Use effective firewall ID (temporary for new firewalls)
+  const effectiveFirewallId = selectedFirewall.value?.id || `temp_${editingFirewall.value.name}`
+  tempNoteText.value = getRuleNote(effectiveFirewallId, ruleType, ruleIndex)
 }
 
 const cancelEditingNote = () => {
@@ -1427,6 +1441,37 @@ const createNewFirewall = () => {
   setTimeout(() => success.value = '', 3000)
 }
 
+// Helper function to detect potentially duplicate rules
+const checkForDuplicateRules = () => {
+  const warnings: string[] = []
+  
+  // Check inbound rules
+  if (editingFirewall.value.inbound_rules && editingFirewall.value.inbound_rules.length > 1) {
+    const portProtocolPairs: string[] = []
+    editingFirewall.value.inbound_rules.forEach((rule, index) => {
+      const key = `${rule.protocol}:${rule.ports || 'all'}`
+      if (portProtocolPairs.includes(key)) {
+        warnings.push(`⚠️ Multiple inbound rules found for ${rule.protocol.toUpperCase()} port ${rule.ports || 'all'}`)
+      }
+      portProtocolPairs.push(key)
+    })
+  }
+  
+  // Check outbound rules
+  if (editingFirewall.value.outbound_rules && editingFirewall.value.outbound_rules.length > 1) {
+    const portProtocolPairs: string[] = []
+    editingFirewall.value.outbound_rules.forEach((rule, index) => {
+      const key = `${rule.protocol}:${rule.ports || 'all'}`
+      if (portProtocolPairs.includes(key)) {
+        warnings.push(`⚠️ Multiple outbound rules found for ${rule.protocol.toUpperCase()} port ${rule.ports || 'all'}`)
+      }
+      portProtocolPairs.push(key)
+    })
+  }
+  
+  return warnings
+}
+
 // Save firewall changes
 const saveFirewall = async () => {
   saving.value = true
@@ -1434,6 +1479,20 @@ const saveFirewall = async () => {
   success.value = ''
 
   try {
+    // Check for potential duplicate rules
+    const duplicateWarnings = checkForDuplicateRules()
+    if (duplicateWarnings.length > 0) {
+      const proceed = confirm(
+        `Potential duplicate rules detected:\n\n${duplicateWarnings.join('\n')}\n\n` +
+        `Consider combining these rules into single rules with multiple IPs/sources.\n\n` +
+        `Do you want to continue saving anyway?`
+      )
+      if (!proceed) {
+        saving.value = false
+        return
+      }
+    }
+    
     // Clean up the firewall object before sending
     const firewallData = JSON.parse(JSON.stringify(editingFirewall.value))
 
@@ -1465,12 +1524,23 @@ const saveFirewall = async () => {
       success.value = 'Firewall updated successfully'
     } else {
       // Create new firewall
+      const tempFirewallId = `temp_${editingFirewall.value.name}`
       const response = await apiCall('/firewalls', {
         method: 'POST',
         body: JSON.stringify(firewallData)
       })
       selectedFirewall.value = response.firewall
       editingFirewall.value = JSON.parse(JSON.stringify(response.firewall))
+      
+      // Migrate temporary notes to the real firewall ID
+      const tempNotes = ruleNotes.value.filter(note => note.firewallId === tempFirewallId)
+      tempNotes.forEach(note => {
+        note.firewallId = response.firewall.id
+      })
+      if (tempNotes.length > 0) {
+        saveNotes()
+      }
+      
       success.value = 'Firewall created successfully'
     }
 
