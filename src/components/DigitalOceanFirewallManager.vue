@@ -1448,7 +1448,7 @@ const checkForDuplicateRules = () => {
   // Check inbound rules
   if (editingFirewall.value.inbound_rules && editingFirewall.value.inbound_rules.length > 1) {
     const portProtocolPairs: string[] = []
-    editingFirewall.value.inbound_rules.forEach((rule, index) => {
+    editingFirewall.value.inbound_rules.forEach((rule) => {
       const key = `${rule.protocol}:${rule.ports || 'all'}`
       if (portProtocolPairs.includes(key)) {
         warnings.push(`⚠️ Multiple inbound rules found for ${rule.protocol.toUpperCase()} port ${rule.ports || 'all'}`)
@@ -1460,7 +1460,7 @@ const checkForDuplicateRules = () => {
   // Check outbound rules
   if (editingFirewall.value.outbound_rules && editingFirewall.value.outbound_rules.length > 1) {
     const portProtocolPairs: string[] = []
-    editingFirewall.value.outbound_rules.forEach((rule, index) => {
+    editingFirewall.value.outbound_rules.forEach((rule) => {
       const key = `${rule.protocol}:${rule.ports || 'all'}`
       if (portProtocolPairs.includes(key)) {
         warnings.push(`⚠️ Multiple outbound rules found for ${rule.protocol.toUpperCase()} port ${rule.ports || 'all'}`)
