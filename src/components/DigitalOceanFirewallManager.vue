@@ -20,63 +20,126 @@
           <div class="flex items-center gap-3">
             <span
               :class="[
-                'px-3 py-1 rounded-full text-sm font-medium',
+                'px-3 py-1 rounded-full text-sm font-medium transition-all',
                 isConnected
                   ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                   : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
               ]"
             >
-              {{ isConnected ? 'Connected' : 'Not Connected' }}
+              {{ isConnected ? `Connected: ${currentTokenName}` : 'Not Connected' }}
             </span>
             <button
               v-if="isConnected"
-              class="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+              class="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
               @click="disconnect"
             >
               Disconnect
             </button>
-          </div>
-        </div>
-        <div class="flex gap-4">
-          <div class="flex-1 relative">
-            <input
-              v-model="apiToken"
-              :type="showToken ? 'text' : 'password'"
-              class="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your DigitalOcean Personal Access Token"
-              @keyup.enter="connectToAPI"
-            />
             <button
-              class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              type="button"
-              @click="showToken = !showToken"
+              class="px-3 py-1 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+              @click="showTokenManager = !showTokenManager"
             >
-              <svg v-if="!showToken" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"
-                      stroke-width="2"/>
-                <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round"
-                      stroke-width="2"/>
-              </svg>
-              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" stroke-linecap="round" stroke-linejoin="round"
-                      stroke-width="2"/>
-              </svg>
+              Manage Tokens
             </button>
           </div>
+        </div>
+        
+        <!-- Token Manager Panel -->
+        <div v-if="showTokenManager" class="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div class="mb-4">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Saved Tokens</h3>
+            <div class="space-y-2">
+              <div v-if="apiTokens.length === 0" class="text-gray-500 dark:text-gray-400 text-sm">
+                No tokens saved. Add your first token below.
+              </div>
+              <div
+                v-for="token in apiTokens"
+                :key="token.id"
+                :class="[
+                  'flex items-center justify-between p-3 rounded-lg transition-all',
+                  selectedTokenId === token.id 
+                    ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-500' 
+                    : 'bg-white dark:bg-gray-600 border border-gray-200 dark:border-gray-500'
+                ]"
+              >
+                <div class="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    :id="`token-${token.id}`"
+                    :checked="selectedTokenId === token.id"
+                    class="text-blue-600 focus:ring-blue-500"
+                    @change="switchToken(token.id)"
+                  />
+                  <label :for="`token-${token.id}`" class="cursor-pointer">
+                    <div class="font-medium text-gray-900 dark:text-white">{{ token.name }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      Added {{ new Date(token.createdAt).toLocaleDateString() }}
+                    </div>
+                  </label>
+                </div>
+                <button
+                  class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm"
+                  @click="deleteToken(token.id)"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Add New Token -->
+          <div class="border-t border-gray-200 dark:border-gray-600 pt-4">
+            <h4 class="font-medium text-gray-900 dark:text-white mb-3">Add New Token</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                v-model="newTokenName"
+                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Token name (e.g., Production, Team A)"
+              />
+              <div class="relative">
+                <input
+                  v-model="newTokenValue"
+                  :type="showNewToken ? 'text' : 'password'"
+                  class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Personal Access Token"
+                />
+                <button
+                  class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  type="button"
+                  @click="showNewToken = !showNewToken"
+                >
+                  <svg v-if="!showNewToken" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                    <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                  </svg>
+                  <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <button
+              :disabled="!newTokenName || !newTokenValue"
+              class="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              @click="addToken"
+            >
+              Add Token
+            </button>
+          </div>
+        </div>
+        
+        <div class="flex gap-4">
           <button
-            :disabled="!apiToken || loading"
+            :disabled="!currentApiToken || loading"
             class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             @click="connectToAPI"
           >
-            {{ loading ? 'Connecting...' : 'Connect' }}
+            {{ loading ? 'Connecting...' : isConnected ? 'Refresh' : 'Connect' }}
           </button>
         </div>
-        <div class="mt-2 flex items-center justify-between">
+        <div class="mt-2">
           <p class="text-sm text-gray-500 dark:text-gray-400">
             Note: Due to CORS restrictions, you may need to use a proxy or browser extension for API calls.
-          </p>
-          <p v-if="isConnected" class="text-xs text-green-600 dark:text-green-400">
-            Token saved locally
           </p>
         </div>
       </div>
@@ -251,6 +314,55 @@
                     </div>
                   </div>
 
+                  <!-- Rule Note Section -->
+                  <div class="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div class="flex items-start justify-between">
+                      <div class="flex-1">
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                          Note
+                        </label>
+                        <div v-if="editingNote?.type === 'inbound' && editingNote?.index === index">
+                          <textarea
+                            v-model="tempNoteText"
+                            class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            rows="2"
+                            placeholder="Add a note for this rule..."
+                            @keyup.escape="cancelEditingNote"
+                          ></textarea>
+                          <div class="flex gap-2 mt-2">
+                            <button
+                              class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                              @click="saveRuleNote('inbound', index)"
+                            >
+                              Save
+                            </button>
+                            <button
+                              class="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                              @click="cancelEditingNote"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                        <div v-else>
+                          <div v-if="selectedFirewall?.id && getRuleNote(selectedFirewall.id, 'inbound', index)" 
+                               class="text-sm text-gray-700 dark:text-gray-300">
+                            {{ getRuleNote(selectedFirewall.id, 'inbound', index) }}
+                          </div>
+                          <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">
+                            No note added
+                          </div>
+                          <button
+                            class="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                            @click="startEditingNote('inbound', index)"
+                          >
+                            {{ getRuleNote(selectedFirewall?.id || '', 'inbound', index) ? 'Edit note' : 'Add note' }}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div class="flex justify-between items-center">
                     <button
                       class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
@@ -332,6 +444,55 @@
                     </div>
                   </div>
 
+                  <!-- Rule Note Section -->
+                  <div class="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div class="flex items-start justify-between">
+                      <div class="flex-1">
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                          Note
+                        </label>
+                        <div v-if="editingNote?.type === 'outbound' && editingNote?.index === index">
+                          <textarea
+                            v-model="tempNoteText"
+                            class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            rows="2"
+                            placeholder="Add a note for this rule..."
+                            @keyup.escape="cancelEditingNote"
+                          ></textarea>
+                          <div class="flex gap-2 mt-2">
+                            <button
+                              class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                              @click="saveRuleNote('outbound', index)"
+                            >
+                              Save
+                            </button>
+                            <button
+                              class="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                              @click="cancelEditingNote"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                        <div v-else>
+                          <div v-if="selectedFirewall?.id && getRuleNote(selectedFirewall.id, 'outbound', index)" 
+                               class="text-sm text-gray-700 dark:text-gray-300">
+                            {{ getRuleNote(selectedFirewall.id, 'outbound', index) }}
+                          </div>
+                          <div v-else class="text-sm text-gray-400 dark:text-gray-500 italic">
+                            No note added
+                          </div>
+                          <button
+                            class="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                            @click="startEditingNote('outbound', index)"
+                          >
+                            {{ getRuleNote(selectedFirewall?.id || '', 'outbound', index) ? 'Edit note' : 'Add note' }}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div class="flex justify-between items-center">
                     <button
                       class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
@@ -353,9 +514,17 @@
             <div v-if="activeTab === 'Droplets & Tags'">
               <div class="space-y-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Droplet IDs (one per line)
-                  </label>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Assigned Droplets
+                    </label>
+                    <button
+                      class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      @click="openDropletSelector"
+                    >
+                      Select Droplets
+                    </button>
+                  </div>
                   <textarea
                     v-model="dropletsText"
                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
@@ -363,6 +532,9 @@
                     rows="4"
                     @input="updateDroplets"
                   ></textarea>
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {{ editingFirewall.droplet_ids?.length || 0 }} droplets assigned
+                  </p>
                 </div>
 
                 <div>
@@ -454,12 +626,122 @@
           </button>
         </div>
       </div>
+
+      <!-- Droplet Selector Modal -->
+      <div v-if="showDropletSelector" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] flex flex-col">
+          <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                Select Droplets
+              </h2>
+              <button
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                @click="showDropletSelector = false"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                </svg>
+              </button>
+            </div>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              Select droplets to assign to this firewall
+            </p>
+          </div>
+          
+          <div class="flex-1 overflow-y-auto p-6">
+            <div v-if="loadingDroplets" class="text-center py-8">
+              <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p class="mt-2 text-gray-600 dark:text-gray-400">Loading droplets...</p>
+            </div>
+            
+            <div v-else-if="droplets.length === 0" class="text-center py-8">
+              <p class="text-gray-500 dark:text-gray-400">No droplets found in your account</p>
+            </div>
+            
+            <div v-else class="space-y-2">
+              <div
+                v-for="droplet in droplets"
+                :key="droplet.id"
+                :class="[
+                  'p-4 rounded-lg border-2 cursor-pointer transition-all',
+                  selectedDroplets.has(droplet.id)
+                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
+                    : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                ]"
+                @click="toggleDropletSelection(droplet.id)"
+              >
+                <div class="flex items-start justify-between">
+                  <div class="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      :checked="selectedDroplets.has(droplet.id)"
+                      class="mt-1 text-blue-600 focus:ring-blue-500 rounded"
+                      @click.stop="toggleDropletSelection(droplet.id)"
+                    />
+                    <div>
+                      <div class="font-medium text-gray-900 dark:text-white">
+                        {{ droplet.name }}
+                      </div>
+                      <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        <span class="inline-flex items-center gap-1">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                          </svg>
+                          {{ droplet.networks.v4.find(n => n.type === 'public')?.ip_address || 'No public IP' }}
+                        </span>
+                        <span class="ml-3">{{ droplet.region.name }}</span>
+                        <span class="ml-3">{{ droplet.size_slug }}</span>
+                      </div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {{ droplet.image.distribution }} {{ droplet.image.name }}
+                      </div>
+                    </div>
+                  </div>
+                  <span
+                    :class="[
+                      'px-2 py-1 text-xs rounded-full',
+                      droplet.status === 'active' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                    ]"
+                  >
+                    {{ droplet.status }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="p-6 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between">
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                {{ selectedDroplets.size }} droplets selected
+              </p>
+              <div class="flex gap-3">
+                <button
+                  class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  @click="showDropletSelector = false"
+                >
+                  Cancel
+                </button>
+                <button
+                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  @click="applyDropletSelection"
+                >
+                  Apply Selection
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 interface FirewallRule {
   protocol: 'tcp' | 'udp' | 'icmp'
@@ -492,14 +774,54 @@ interface Firewall {
   pending_changes?: any[]
 }
 
-const apiToken = ref('')
+interface ApiToken {
+  id: string
+  name: string
+  token: string
+  createdAt: number
+}
+
+interface Droplet {
+  id: number
+  name: string
+  status: string
+  size_slug: string
+  region: {
+    name: string
+    slug: string
+  }
+  image: {
+    name: string
+    distribution: string
+  }
+  networks: {
+    v4: Array<{
+      ip_address: string
+      type: string
+    }>
+  }
+}
+
+interface RuleNote {
+  firewallId: string
+  ruleType: 'inbound' | 'outbound'
+  ruleIndex: number
+  note: string
+}
+
+const apiTokens = ref<ApiToken[]>([])
+const selectedTokenId = ref<string>('')
+const showTokenManager = ref(false)
+const newTokenName = ref('')
+const newTokenValue = ref('')
+const showNewToken = ref(false)
 const isConnected = ref(false)
 const loading = ref(false)
 const loadingFirewalls = ref(false)
+const loadingDroplets = ref(false)
 const saving = ref(false)
 const error = ref('')
 const success = ref('')
-const showToken = ref(false)
 
 const firewalls = ref<Firewall[]>([])
 const selectedFirewall = ref<Firewall | null>(null)
@@ -511,21 +833,46 @@ const editingFirewall = ref<Firewall>({
   tags: []
 })
 
+const droplets = ref<Droplet[]>([])
+const showDropletSelector = ref(false)
+const selectedDroplets = ref<Set<number>>(new Set())
 const dropletsText = ref('')
 const tagsText = ref('')
+
+const ruleNotes = ref<RuleNote[]>([])
+const editingNote = ref<{ type: 'inbound' | 'outbound', index: number } | null>(null)
+const tempNoteText = ref('')
 
 const tabs = ['Inbound Rules', 'Outbound Rules', 'Droplets & Tags']
 const activeTab = ref('Inbound Rules')
 
 const API_BASE = 'https://api.digitalocean.com/v2'
-const TOKEN_STORAGE_KEY = 'do_firewall_manager_token'
+const TOKENS_STORAGE_KEY = 'do_firewall_manager_tokens'
+const SELECTED_TOKEN_KEY = 'do_firewall_manager_selected_token'
+const NOTES_STORAGE_KEY = 'do_firewall_rule_notes'
+
+const currentApiToken = computed(() => {
+  if (!selectedTokenId.value) return ''
+  const token = apiTokens.value.find(t => t.id === selectedTokenId.value)
+  return token?.token || ''
+})
+
+const currentTokenName = computed(() => {
+  if (!selectedTokenId.value) return ''
+  const token = apiTokens.value.find(t => t.id === selectedTokenId.value)
+  return token?.name || ''
+})
 
 // Helper function to make API calls
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+  if (!currentApiToken.value) {
+    throw new Error('No API token selected')
+  }
+  
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${apiToken.value}`,
+      'Authorization': `Bearer ${currentApiToken.value}`,
       'Content-Type': 'application/json',
       ...options.headers
     }
@@ -539,8 +886,199 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   return response.status === 204 ? null : response.json()
 }
 
+// Token management functions
+const loadTokens = () => {
+  const stored = localStorage.getItem(TOKENS_STORAGE_KEY)
+  if (stored) {
+    try {
+      apiTokens.value = JSON.parse(stored)
+    } catch (e) {
+      console.error('Failed to load tokens:', e)
+      apiTokens.value = []
+    }
+  }
+  
+  const selectedId = localStorage.getItem(SELECTED_TOKEN_KEY)
+  if (selectedId && apiTokens.value.find(t => t.id === selectedId)) {
+    selectedTokenId.value = selectedId
+  }
+}
+
+const saveTokens = () => {
+  localStorage.setItem(TOKENS_STORAGE_KEY, JSON.stringify(apiTokens.value))
+  if (selectedTokenId.value) {
+    localStorage.setItem(SELECTED_TOKEN_KEY, selectedTokenId.value)
+  }
+}
+
+const addToken = () => {
+  if (!newTokenName.value.trim() || !newTokenValue.value.trim()) {
+    error.value = 'Please enter both token name and value'
+    setTimeout(() => error.value = '', 3000)
+    return
+  }
+  
+  const newToken: ApiToken = {
+    id: Date.now().toString(),
+    name: newTokenName.value.trim(),
+    token: newTokenValue.value.trim(),
+    createdAt: Date.now()
+  }
+  
+  apiTokens.value.push(newToken)
+  selectedTokenId.value = newToken.id
+  saveTokens()
+  
+  newTokenName.value = ''
+  newTokenValue.value = ''
+  showNewToken.value = false
+  
+  success.value = `Token "${newToken.name}" added successfully`
+  setTimeout(() => success.value = '', 3000)
+}
+
+const deleteToken = (tokenId: string) => {
+  const token = apiTokens.value.find(t => t.id === tokenId)
+  if (!token) return
+  
+  if (confirm(`Delete token "${token.name}"?`)) {
+    apiTokens.value = apiTokens.value.filter(t => t.id !== tokenId)
+    if (selectedTokenId.value === tokenId) {
+      selectedTokenId.value = apiTokens.value[0]?.id || ''
+      if (!selectedTokenId.value) {
+        isConnected.value = false
+        firewalls.value = []
+        selectedFirewall.value = null
+      }
+    }
+    saveTokens()
+    success.value = `Token "${token.name}" deleted`
+    setTimeout(() => success.value = '', 3000)
+  }
+}
+
+const switchToken = async (tokenId: string) => {
+  selectedTokenId.value = tokenId
+  saveTokens()
+  if (currentApiToken.value) {
+    await connectToAPI()
+  }
+}
+
+// Notes management functions
+const loadNotes = () => {
+  const stored = localStorage.getItem(NOTES_STORAGE_KEY)
+  if (stored) {
+    try {
+      ruleNotes.value = JSON.parse(stored)
+    } catch (e) {
+      console.error('Failed to load notes:', e)
+      ruleNotes.value = []
+    }
+  }
+}
+
+const saveNotes = () => {
+  localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(ruleNotes.value))
+}
+
+const getRuleNote = (firewallId: string, ruleType: 'inbound' | 'outbound', ruleIndex: number): string => {
+  const note = ruleNotes.value.find(
+    n => n.firewallId === firewallId && n.ruleType === ruleType && n.ruleIndex === ruleIndex
+  )
+  return note?.note || ''
+}
+
+const saveRuleNote = (ruleType: 'inbound' | 'outbound', ruleIndex: number) => {
+  if (!selectedFirewall.value?.id) return
+  
+  const existingIndex = ruleNotes.value.findIndex(
+    n => n.firewallId === selectedFirewall.value!.id && n.ruleType === ruleType && n.ruleIndex === ruleIndex
+  )
+  
+  if (tempNoteText.value.trim()) {
+    const noteData: RuleNote = {
+      firewallId: selectedFirewall.value.id,
+      ruleType,
+      ruleIndex,
+      note: tempNoteText.value.trim()
+    }
+    
+    if (existingIndex >= 0) {
+      ruleNotes.value[existingIndex] = noteData
+    } else {
+      ruleNotes.value.push(noteData)
+    }
+  } else if (existingIndex >= 0) {
+    ruleNotes.value.splice(existingIndex, 1)
+  }
+  
+  saveNotes()
+  editingNote.value = null
+  tempNoteText.value = ''
+  
+  success.value = 'Note saved'
+  setTimeout(() => success.value = '', 2000)
+}
+
+const startEditingNote = (ruleType: 'inbound' | 'outbound', ruleIndex: number) => {
+  if (!selectedFirewall.value?.id) return
+  
+  editingNote.value = { type: ruleType, index: ruleIndex }
+  tempNoteText.value = getRuleNote(selectedFirewall.value.id, ruleType, ruleIndex)
+}
+
+const cancelEditingNote = () => {
+  editingNote.value = null
+  tempNoteText.value = ''
+}
+
+// Droplet management functions
+const fetchDroplets = async () => {
+  loadingDroplets.value = true
+  try {
+    const data = await apiCall('/droplets?per_page=200')
+    droplets.value = data.droplets || []
+  } catch (err: any) {
+    error.value = err.message || 'Failed to fetch droplets'
+    setTimeout(() => error.value = '', 5000)
+  } finally {
+    loadingDroplets.value = false
+  }
+}
+
+const openDropletSelector = async () => {
+  showDropletSelector.value = true
+  selectedDroplets.value = new Set(editingFirewall.value.droplet_ids || [])
+  if (droplets.value.length === 0) {
+    await fetchDroplets()
+  }
+}
+
+const toggleDropletSelection = (dropletId: number) => {
+  if (selectedDroplets.value.has(dropletId)) {
+    selectedDroplets.value.delete(dropletId)
+  } else {
+    selectedDroplets.value.add(dropletId)
+  }
+}
+
+const applyDropletSelection = () => {
+  editingFirewall.value.droplet_ids = Array.from(selectedDroplets.value)
+  dropletsText.value = editingFirewall.value.droplet_ids.join('\n')
+  showDropletSelector.value = false
+  success.value = `${selectedDroplets.value.size} droplets selected`
+  setTimeout(() => success.value = '', 2000)
+}
+
 // Connect to API and fetch firewalls
 const connectToAPI = async () => {
+  if (!currentApiToken.value) {
+    error.value = 'Please select or add a token first'
+    setTimeout(() => error.value = '', 3000)
+    return
+  }
+  
   loading.value = true
   error.value = ''
   success.value = ''
@@ -548,9 +1086,7 @@ const connectToAPI = async () => {
   try {
     await fetchFirewalls()
     isConnected.value = true
-    // Save token to localStorage on successful connection
-    localStorage.setItem(TOKEN_STORAGE_KEY, apiToken.value)
-    success.value = 'Successfully connected to DigitalOcean API'
+    success.value = `Connected with "${currentTokenName.value}"`
     setTimeout(() => success.value = '', 3000)
   } catch (err: any) {
     error.value = err.message || 'Failed to connect to API. Please check your token and CORS settings.'
@@ -561,24 +1097,21 @@ const connectToAPI = async () => {
   }
 }
 
-// Disconnect and clear token
+// Disconnect
 const disconnect = () => {
-  if (confirm('This will clear your saved token. Are you sure?')) {
-    localStorage.removeItem(TOKEN_STORAGE_KEY)
-    apiToken.value = ''
-    isConnected.value = false
-    firewalls.value = []
-    selectedFirewall.value = null
-    editingFirewall.value = {
-      name: '',
-      inbound_rules: [],
-      outbound_rules: [],
-      droplet_ids: [],
-      tags: []
-    }
-    success.value = 'Disconnected and token cleared'
-    setTimeout(() => success.value = '', 3000)
+  isConnected.value = false
+  firewalls.value = []
+  selectedFirewall.value = null
+  droplets.value = []
+  editingFirewall.value = {
+    name: '',
+    inbound_rules: [],
+    outbound_rules: [],
+    droplet_ids: [],
+    tags: []
   }
+  success.value = 'Disconnected'
+  setTimeout(() => success.value = '', 2000)
 }
 
 // Fetch all firewalls
@@ -897,12 +1430,37 @@ const deleteFirewall = async () => {
 
 // Clear messages after timeout - removed since we handle timeouts inline now
 
-// Load token from localStorage on mount
+// Watch for token changes to update connection status
+watch(selectedTokenId, () => {
+  if (!selectedTokenId.value) {
+    isConnected.value = false
+    firewalls.value = []
+    selectedFirewall.value = null
+  }
+})
+
+// Load data on mount
 onMounted(async () => {
-  const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
-  if (savedToken) {
-    apiToken.value = savedToken
-    // Auto-connect with saved token
+  loadTokens()
+  loadNotes()
+  
+  // Try to migrate old single token if exists
+  const oldToken = localStorage.getItem('do_firewall_manager_token')
+  if (oldToken && apiTokens.value.length === 0) {
+    const migratedToken: ApiToken = {
+      id: Date.now().toString(),
+      name: 'Migrated Token',
+      token: oldToken,
+      createdAt: Date.now()
+    }
+    apiTokens.value.push(migratedToken)
+    selectedTokenId.value = migratedToken.id
+    saveTokens()
+    localStorage.removeItem('do_firewall_manager_token')
+  }
+  
+  // Auto-connect if token is selected
+  if (selectedTokenId.value && currentApiToken.value) {
     await connectToAPI()
   }
 })
@@ -921,28 +1479,115 @@ onMounted(async () => {
   }
 }
 
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
 }
 
+/* Smooth transitions for interactive elements */
+input, textarea, select, button {
+  transition: all 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+/* Modal animations */
+div[class*="fixed inset-0"] {
+  animation: fade-in 0.2s ease-out;
+}
+
+div[class*="fixed inset-0"] > div {
+  animation: scale-in 0.2s ease-out;
+}
+
+/* Custom scrollbar for all modes */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
 /* Custom scrollbar for dark mode */
 @media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
   ::-webkit-scrollbar-track {
     background: #1f2937;
   }
 
   ::-webkit-scrollbar-thumb {
     background: #4b5563;
-    border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
     background: #6b7280;
   }
+}
+
+/* Smooth hover effects */
+[class*="hover:"]:not(button) {
+  transition: all 0.15s ease;
+}
+
+/* Loading spinner improvements */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Card hover effects */
+div[class*="rounded-lg"]:hover {
+  transition: box-shadow 0.2s ease;
+}
+
+/* Checkbox animation */
+input[type="checkbox"], input[type="radio"] {
+  transition: all 0.15s ease;
+}
+
+input[type="checkbox"]:checked, input[type="radio"]:checked {
+  animation: scale-in 0.2s ease;
 }
 </style>
