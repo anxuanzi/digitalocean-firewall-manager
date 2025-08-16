@@ -736,6 +736,22 @@
           </div>
         </div>
       </div>
+      
+      <!-- Footer -->
+      <footer class="mt-12 text-center py-8 border-t border-gray-200 dark:border-gray-700">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Built with ❤️ by 
+          <a 
+            href="https://ftan.dev/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors font-medium"
+          >
+            FantasticTony
+          </a> 
+          for the DevOps Community
+        </p>
+      </footer>
     </div>
   </div>
 </template>
